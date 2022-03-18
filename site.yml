@@ -21,41 +21,23 @@
 
 - import_playbook: playbooks/display_deployment_plan.yml
 
-- hosts: localhost
+- import_playbook: deploy_prerequisites.yml
   vars:
     dci_status: 'pre-run'
     dci_comment: 'Making preparations'
     job_id: "{{ job_info.job.id }}"
-  tasks:
-    - name: Changing the status of the job to pre-run
-      debug:
-        msg: "The job has changed to pre-run state"
 
-- import_playbook: deploy_prerequisites.yml
-
-- hosts: localhost
+- import_playbook: deploy_cluster.yml
   vars:
     dci_status: 'running'
     dci_comment: 'Running'
     job_id: "{{ job_info.job.id }}"
-  tasks:
-    - name: Changing the status of the job to running
-      debug:
-        msg: "The job has changed to running state"
 
-- import_playbook: deploy_cluster.yml
-
-- hosts: localhost
+- import_playbook: post_install.yml
   vars:
     dci_status: 'post-run'
     dci_comment: 'post-run'
     job_id: "{{ job_info.job.id }}"
-  tasks:
-    - name: Changing the status of the job to post-run
-      debug:
-        msg: "The job has changed to post-run state"
-
-- import_playbook: post_install.yml
 
 - import_playbook: deploy_day2_workers.yml
   vars:
@@ -71,7 +53,7 @@
   tasks:
     - name: Changing the status of the job to success
       debug:
-        msg: "The job has changed to post-run success"
+        msg: "The job has succesfully finished"
 
 
 
