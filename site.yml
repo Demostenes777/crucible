@@ -1,10 +1,50 @@
 ---
+- hosts: localhost
+  tasks:
+    - name: Get Remote CI information
+      dci_remoteci:
+        id: "{{ lookup('env', 'DCI_CLIENT_ID').split('/')[1]}}"
+      register: remote_ci
+
+    - name: Schedule a new job
+      dci_job:
+        name: 'rhocp-crucible-jnpr-{{ ansible_date_time.iso8601 }}'
+        topic: 'OCP-4.10'
+        dci_client_id: "{{ lookup('env', 'DCI_CLIENT_ID') }}"
+        dci_api_secret: "{{ lookup('env', 'DCI_API_SECRET') }}"
+        dci_cs_url: "{{ lookup('env', 'DCI_CS_URL') }}"
+      register: job_info
+
+    - name: Show Job ID
+      debug:
+        msg: "Job ID: {{ job_info.job.id }}"
+
 - import_playbook: playbooks/display_deployment_plan.yml
+  vars:
+    dci_status: 'pre-run'
+    dci_comment: 'Preparing the deployment'
+    job_id: "{{ job_info.job.id }}"
 
 - import_playbook: deploy_prerequisites.yml
+  vars:
+    dci_status: 'configure'
+    dci_comment: 'Configuring the bastion host'
+    job_id: "{{ job_info.job.id }}"
 
 - import_playbook: deploy_cluster.yml
+  vars:
+    dci_status: 'install'
+    dci_comment: 'Installing the RHOCP cluster'
+    job_id: "{{ job_info.job.id }}"
 
 - import_playbook: post_install.yml
+  vars:
+    dci_status: 'post-run'
+    dci_comment: 'Configuring the bastion host'
+    job_id: "{{ job_info.job.id }}"
 
 - import_playbook: deploy_day2_workers.yml
+  vars:
+    dci_status: 'post-run'
+    dci_comment: 'Day 2 operations'
+    job_id: "{{ job_info.job.id }}"

@@ -1,4 +1,5 @@
 ---
+
 - import_playbook: prereq_facts_check.yml
 
 - name: Play to populate image_hashes for relevant images

@@ -13,5 +13,5 @@ inventory.yml
 *.vault.yml
 *.vault.yaml
 fetched/
-
+.idea
 tests/validate_inventory/failed
