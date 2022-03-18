@@ -57,10 +57,3 @@
           - (display_deployment_plan__confirmation.user_input | lower | trim) in ['y', 'yes']
         fail_msg: "The deployment plan must be confirmed by the user"
         quiet: true
-  rescue:
-    - dci_job:
-        id: "{{ job_info.job.id }}"
-        state: failure
-        dci_client_id: "{{ lookup('env', 'DCI_CLIENT_ID') }}"
-        dci_api_secret: "{{ lookup('env', 'DCI_API_SECRET') }}"
-        dci_cs_url: "{{ lookup('env', 'DCI_CS_URL') }}"
