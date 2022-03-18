@@ -20,10 +20,6 @@
         msg: "Job ID: {{ job_info.job.id }}"
 
 - import_playbook: playbooks/display_deployment_plan.yml
-  vars:
-    dci_status: 'pre-run'
-    dci_comment: 'Preparing the deployment'
-    job_id: "{{ job_info.job.id }}"
 
 - import_playbook: deploy_prerequisites.yml
   vars:

@@ -2,6 +2,9 @@
 - name: Display deployment plan
   hosts: localhost
   gather_facts: false
-
+  vars:
+    dci_status: 'pre-run'
+    dci_comment: 'Preparing the deployment'
+    job_id: "{{ job_info.job.id }}"
   roles:
     - display_deployment_plan
