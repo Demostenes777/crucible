@@ -1,0 +1,120 @@
+= Crucible & DCI integration - PoC
+
+This repository explores the integration of https://github.com/redhat-partner-solutions/crucible[Crucible] with the https://www.distributed-ci.io/login[DCI Dashboard] in order to track the progress of the installation of an OCP cluster. 
+
+The procedure followed to achieve the integration is described in this README file.
+
+== Create a Remote CI on the DCI dashboard
+
+To see the progress of the OCP cluster installation orchestrated by Crucible it is necessary to set up the https://www.distributed-ci.io/[DCI dashboard]. This requires contacting the DCI team to get users access, create a team and assign users to it. Once that is solved, it is necessary to create a new *Remote CI*:
+
+* Go to https://www.distributed-ci.io/remotecis[Remotecis]
+* Click on `Create a new remoteci`
+* Set up the remoteci's `name` and select the `team owner`.
+* Click on `Create`
+
+== Install DCI ansible modules
+
+You can check official https://github.com/redhat-cip/dci-ansible [dci-ansible documentation] for detailed instructions. In summary:
+
+[source,bash]
+----
+# yum install https://packages.distributed-ci.io/dci-release.el7.noarch.rpm
+# yum install dci-ansible
+# cd /usr/share/dci && git clone https://github.com/redhat-cip/dci-ansible.git
+----
+ 
+== Export Remote CI auth variables
+
+Once the *Remote CI* has been created, you need to set the *Remote CI's* credentials as environment variables in your bastion host. You can retrieve the generated credentials clicking on `credentials.yaml` and set them manually, or you can download to your bastion a file called `dcirc.sh` and run it.
+
+[source,bash]
+----
+$ source dcirc.sh
+----
+
+== Add DCI related configuration to Crucible's `ansible.cfg`
+
+Edit the `ansible.cfg` file as follows and add the DCI-related configuration in _library_, _module_utils_, _callback_plugins_ and _callback_whitelist_.
+
+[source, bash]
+----
+[defaults]
+host_key_checking = False
+inventory = ./inventory
+roles_path = ./roles
+library = library:/usr/share/dci/modules/
+module_utils       = /usr/share/dci/module_utils/
+callback_plugins   = /usr/share/dci/callback/
+remote_tmp = /tmp
+command_warnings = True
+ansible_managed = "This file is managed by Ansible - changes may be lost"
+retry_files_enabled = False
+forks = 8
+stdout_callback = yaml
+callback_whitelist = debug,profile_tasks,dci
+
+[privilege_escalation]
+become_method = sudo
+
+[inventory]
+unparsed_is_failed = True
+----
+
+== Create a DCI job
+
+In the Crucible site.yml playbook, the following code has been included to create a DCI Job, that is later used to track the progress of the OCP cluster installation.
+
+[source,yaml]
+----
+- hosts: localhost
+  tasks:
+    - name: Get Remote CI information
+      dci_remoteci:
+        id: "{{ lookup('env', 'DCI_CLIENT_ID').split('/')[1]}}"
+      register: remote_ci
+
+    - name: Schedule a new job
+      dci_job:
+        name: 'rhocp-crucible-jnpr-{{ ansible_date_time.iso8601 }}'
+        topic: 'OCP-4.10'
+        dci_client_id: "{{ lookup('env', 'DCI_CLIENT_ID') }}"
+        dci_api_secret: "{{ lookup('env', 'DCI_API_SECRET') }}"
+        dci_cs_url: "{{ lookup('env', 'DCI_CS_URL') }}"
+      register: job_info
+
+    - name: Show Job ID
+      debug:
+        msg: "Job ID: {{ job_info.job.id }}"
+----
+
+== Track the Crucible progress in the DCI Dashboard
+
+Using the Job ID previously created we can update the status of the OCP cluster installation in the DCI Dashboard.
+          
+[source,yaml]
+----
+- import_playbook: post_install.yml
+  vars:
+    dci_status: 'post-run'
+    dci_comment: 'post-run'
+    job_id: "{{ job_info.job.id }}"
+
+- import_playbook: deploy_day2_workers.yml
+  vars:
+    dci_status: 'post-run'
+    dci_comment: 'Day 2 operations'
+    job_id: "{{ job_info.job.id }}"
+
+- hosts: localhost
+  vars:
+    dci_status: 'success'
+    dci_comment: 'success'
+    job_id: "{{ job_info.job.id }}"
+  tasks:
+    - name: Changing the status of the job to success
+      debug:
+        msg: "The job has succesfully finished"
+----
+
+
